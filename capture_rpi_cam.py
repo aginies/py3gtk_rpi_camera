@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+# version 1.0
 #
 # first program to learn python and Gtk
 # Capture images and create a timelapse video using an RPI camera
