@@ -45,3 +45,4 @@ $ python3 py3gtk_rpi_camera.py
 
 ![](images/settings.jpg)
 
+![](images/help.jpg)
