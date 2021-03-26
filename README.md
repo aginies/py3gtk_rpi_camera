@@ -42,5 +42,6 @@ $ python3 py3gtk_rpi_camera.py
 # Images
 
 ![](images/interface.jpg)
-![](images/setting.jpg)
+
+![](images/settings.jpg)
 
