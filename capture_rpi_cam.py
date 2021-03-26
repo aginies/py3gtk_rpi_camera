@@ -675,11 +675,15 @@ class MainBox(Gtk.Window):
       nb = c + 1
       print("Update to image image_" + str(c).zfill(4) + '.jpg')
       self.nb_capture.set_text("Number of Captures (every " + str(int(self.timelapse)/1000) +  "s) : " + str(nb))
-      self.img = Image.open(self.working_dir + "/" + self.image_name + str(c).zfill(4) + "." + self.encoding)
-      sizeh = int(400/self.ratio)
-      newimg = self.img.resize((400, sizeh))
-      newimg.save(self.working_dir + "/_live_record_rpi." + self.encoding)
-      self.live.set_from_file(self.working_dir + "/_live_record_rpi." + self.encoding)
+      imagename= self.working_dir + "/" + self.image_name + str(c).zfill(4) + "." + self.encoding
+      if os.path.isfile(imagename):
+          self.img = Image.open(imagename)
+          sizeh = int(400/self.ratio)
+          newimg = self.img.resize((400, sizeh))
+          newimg.save(self.working_dir + "/_live_record_rpi." + self.encoding)
+          self.live.set_from_file(self.working_dir + "/_live_record_rpi." + self.encoding)
+      else:
+          print("image not ready... bypassing")
       return True
 
     def start_capture(self, button):
