@@ -10,6 +10,8 @@ Why an RPI camera?
 
 You can find easily RPI camera for ~12€ today, so this is quite interesting to using it on an RPI board.
 
+DEVEL VERSION, so there is probably som bugs :)
+
 # config.ini
 
 Default configuration file. You can change parameter using the GUI.
