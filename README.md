@@ -39,6 +39,16 @@ Just clone this repo, and launch it:
 $ python3 py3gtk_rpi_camera.py
 ```
 
+# Know issues
+
+When you click **Live On** the live streaming could not be displayed,
+if so just resize a bit the Main window and you will see it.
+I don't know yet how to fix this issue...
+
+# The Futur?
+
+There is probably plenty of other features that this tool can have :)
+
 # Images
 
 ![](images/interface.jpg)
@@ -46,3 +56,5 @@ $ python3 py3gtk_rpi_camera.py
 ![](images/settings.jpg)
 
 ![](images/help.jpg)
+
+![](images/live.jpg)
