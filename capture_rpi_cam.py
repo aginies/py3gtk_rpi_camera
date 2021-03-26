@@ -747,9 +747,9 @@ class MainBox(Gtk.Window):
                     verbose = "--verbose"
                 else:
                     verbose = ""
-                command = raspistill + " -rot " + rot + " --timelapse " + self.timelapse + " -o " + self.image_name + str(chr(37)) +"04d." + self.encoding + " --width " + width + " --height " + height + " --quality " + quality +  " -t 0" + " --encoding " + self.encoding + " " +  verbose + extra
+                command = raspistill + " -rot " + rot + " --timelapse " + self.timelapse + " -o " + self.image_name + str(chr(37)) +"04d." + self.encoding + " --width " + width + " --height " + height + " --quality " + quality +  " -t 0" + " --encoding " + self.encoding + " " + extra
                 #+ "2> /tmp/_datafile"
-    
+
                 self.sp = subprocess.Popen(command, cwd=self.working_dir, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 self.ratio = float(int(width)/int(height))
                 # wait for first image
