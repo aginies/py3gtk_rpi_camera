@@ -44,25 +44,184 @@ def read_config():
             config.read('config.ini')
             if config.has_section("all") != True:
                 config.add_section('all')
+            if config.has_section("img") != True:
+                config.add_section('img')
+            if config.has_section("video") != True:
+                config.add_section('video')
             config.set('all', 'configfile', 'config.ini')
             config.set('all', 'working_dir', '/tmp/')
-            config.set('all', 'rotation', '180')
-            #config.set('all', 'raspistill', '/usr/bin/raspistill')
-            config.set('all', 'image_name', 'image')
-            config.set('all', 'width', '1920')
-            config.set('all', 'height', '1080')
-            config.set('all', 'quality', '10')
-            config.set('all', 'encoding', 'jpg')
-            config.set('all', 'timelapse', '3000')
-            config.set('all', 'extra', '')
+            config.set('img', 'rotation', '180')
+            config.set('img', 'image_name', 'image')
+            config.set('img', 'width', '1920')
+            config.set('img', 'height', '1080')
+            config.set('img', 'quality', '10')
+            config.set('img', 'encoding', 'jpg')
+            config.set('img', 'timelapse', '3000')
+            config.set('img', 'extra', '')
+            config.set('video', 'framerate', '30')
+            config.set('video', 'setpts', '0.3*PTS')
+            config.set('video', 'vcodec', 'libx264')
+            config.set('video', 'width', '1920')
+            config.set('video', 'height', '1080')
+            config.set('video', 'extra', '')
             config.write(f)
             f.close()
             return config
 
+class DisplayVideoConf(Gtk.Window):
+    def __init__(self, parent):
+        Gtk.Window.__init__(self, title="FFMPEG Video Settings", transient_for=parent)
+
+        self.set_default_size(640, 480)
+        self.set_border_width(10)
+
+        def show_video_help(button):
+            #self.help_button.set_sensitive(False)
+            win = Gtk.Window(title="ffmpeg --help", transient_for=parent)
+            win.set_default_size(800, 700)
+            win.set_border_width(10)
+
+            # get help
+            cmd = "ffmpeg --help"
+            proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            rc = proc.wait()
+            outs, errs = proc.communicate(timeout=2)
+            textview = Gtk.TextView()
+            textbuffer = textview.get_buffer()
+            textview.set_editable(False)
+            scrolled = Gtk.ScrolledWindow()
+            scrolled.add(textview)
+            end_iter = textbuffer.get_end_iter()
+            textbuffer.insert(end_iter, outs.decode("utf8"))
+
+            box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10, border_width=12)
+            box.pack_start(scrolled, True, True, 0)
+            win.add(box)
+            win.show_all()
+ 
+        def on_clicked_ok(button_ok):
+            print("saving file")
+            fp = open(config.get('all', 'configfile'), 'w')
+            config.set('video', 'framerate', entry_framerate.get_text())
+            config.set('video', 'setpts', entry_setpts.get_text())
+            config.set('video', 'vcodec', entry_vcodec.get_text())
+            config.set('video', 'width', entry_vwidth.get_text())
+            config.set('video', 'height', entry_vheight.get_text())
+            config.set('video', 'extra', entry_vextra.get_text())
+            config.write(fp)
+            fp.close()
+            self.destroy()
+
+        def on_clicked_cancel(button_cancel):
+            print("cancel")
+            self.destroy()
+
+        #
+        # read from config file
+        config = read_config()
+
+        self.help_ffmpeg = Gtk.Button(label="ffmpeg Help")
+        self.help_ffmpeg.connect("clicked", show_video_help)
+
+        # rotate or not
+        box_framerate = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        entry_framerate = Gtk.Entry()
+        label_framerate = Gtk.Label("Framerate")
+        if config.has_option('video', 'framerate'):
+            entry_framerate.set_text(config.get('video', 'framerate'))
+        else:
+            entry_framerate.set_text("30")
+
+        box_vwidth = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        entry_vwidth = Gtk.Entry()
+        label_vwidth = Gtk.Label("Video Width (1920)")
+        if config.has_option('video', 'width'):
+            entry_vwidth.set_text(config.get('video', 'width'))
+        else:
+            entry_vwidth.set_text("1920")
+
+        box_vheight = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        entry_vheight = Gtk.Entry()
+        label_vheight = Gtk.Label("Video Height (1080)")
+        if config.has_option('video', 'height'):
+            entry_vheight.set_text(config.get('video', 'height'))
+        else:
+            entry_vheight.set_text("1080")
+
+        box_steptps = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        entry_setpts = Gtk.Entry()
+        label_setpts = Gtk.Label("Video Acceleration")
+        if config.has_option('video', 'setpts'):
+            entry_setpts.set_text(config.get('video', 'setpts'))
+        else:
+            entry_setpts.set_text("0.3*PTS")
+
+        box_vcodec = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        entry_vcodec = Gtk.Entry()
+        label_vcodec = Gtk.Label("Video Codec")
+        if config.has_option('video', 'vcodec'):
+            entry_vcodec.set_text(config.get('video', 'vcodec'))
+        else:
+            entry_vcodec.set_text('libx264')
+
+        box_vextra = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        entry_vextra = Gtk.Entry()
+        label_vextra = Gtk.Label("Extra Options (See Help)")
+        if config.has_option('video', 'extra'):
+            entry_vextra.set_text(config.get('video', 'extra'))
+        else:
+            entry_vextra.set_text("")
+
+        box_ok_cancel= Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        button_ok = Gtk.Button.new_with_mnemonic("_Ok")
+        button_ok.connect("clicked", on_clicked_ok)
+        button_cancel = Gtk.Button.new_with_mnemonic("_Cancel")
+        button_cancel.connect("clicked", on_clicked_cancel)
+
+        box_framerate.pack_start(label_framerate, False, False, 0)
+        box_framerate.pack_end(entry_framerate, False, False, 0)
+        box_vheight.pack_start(label_vheight, False, False, 0)
+        box_vheight.pack_end(entry_vheight, False, False, 0)
+        box_vwidth.pack_start(label_vwidth, False, False, 0)
+        box_vwidth.pack_end(entry_vwidth, False, False, 0)
+        box_vcodec.pack_start(label_vcodec, False, False, 0)
+        box_vcodec.pack_end(entry_vcodec, False, False, 0)
+        box_steptps.pack_start(label_setpts, False, False, 0)
+        box_steptps.pack_end(entry_setpts, False, False, 0)
+        box_vextra.pack_start(label_vextra, False, False, 0)
+        box_vextra.pack_end(entry_vextra, False, False, 0)
+        box_ok_cancel.pack_start(button_cancel, False, False, 0)
+        box_ok_cancel.pack_end(button_ok, False, False, 0)
+
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        vbox.set_spacing(20)
+        self.add(vbox)
+        vbox.pack_start(self.help_ffmpeg, False, False, 0)
+
+        vboxvideo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        vboxvideo.pack_start(box_framerate, False, False, 0)
+        vboxvideo.pack_start(box_vwidth, False, False, 0)
+        vboxvideo.pack_start(box_vheight, False, False, 0)
+        vboxvideo.pack_start(box_vcodec, False, False, 0)
+        vboxvideo.pack_start(box_steptps, False, False, 0)
+        framevideo = Gtk.Frame()
+        framevideo.add(vboxvideo)
+        framevideo.show()
+
+        vboxmore = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        vboxmore.pack_start(box_vextra, False, False, 0)
+        framemore = Gtk.Frame()
+        framemore.add(vboxmore)
+        framemore.show()
+
+        vbox.add(framevideo)
+        vbox.add(framemore)
+        vbox.pack_end(box_ok_cancel, False, False, 0)
+        self.show_all()
 
 class DisplayConf(Gtk.Window):
     def __init__(self, parent):
-        Gtk.Window.__init__(self, title="Rpi Camera serrings", transient_for=parent)
+        Gtk.Window.__init__(self, title="Rpi Camera Settings", transient_for=parent)
 
         self.set_default_size(640, 480)
         self.set_border_width(10)
@@ -97,15 +256,14 @@ class DisplayConf(Gtk.Window):
 
             config.set('all', 'configfile', entry_info_config.get_text())
             config.set('all', 'working_dir', entry_working_dir.get_text())
-            config.set('all', 'rotation', entry_rot.get_text())
-            #config.set('all', 'raspistill', entry_raspistill.get_text())
-            config.set('all', 'image_name', entry_image_name.get_text())
-            config.set('all', 'width', entry_width.get_text())
-            config.set('all', 'height', entry_height.get_text())
-            config.set('all', 'quality', entry_quality.get_text())
-            config.set('all', 'encoding', combo_encoding.get_active_text())
-            config.set('all', 'timelapse', entry_timelapse.get_text())
-            config.set('all', 'extra', entry_extra.get_text())
+            config.set('img', 'rotation', entry_rot.get_text())
+            config.set('img', 'image_name', entry_image_name.get_text())
+            config.set('img', 'width', entry_width.get_text())
+            config.set('img', 'height', entry_height.get_text())
+            config.set('img', 'quality', entry_quality.get_text())
+            config.set('img', 'encoding', combo_encoding.get_active_text())
+            config.set('img', 'timelapse', entry_timelapse.get_text())
+            config.set('img', 'extra', entry_extra.get_text())
             config.write(fp)
             fp.close()
             self.destroy()
@@ -178,52 +336,44 @@ class DisplayConf(Gtk.Window):
         file_info_config = Gtk.Button(label="Choose File")
         file_info_config.connect("clicked", on_file_clicked)
 
-#        box_raspistill = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-#        entry_raspistill = Gtk.Entry()
-#        label_raspistill = Gtk.Label("Path to raspistill")
-#        if config.has_option('all', 'raspistill'):
-#            entry_raspistill.set_text(config.get('all', 'raspistill'))
-#        else:
-#            entry_raspistill.set_text("/usr/bin/raspistill")
-
         # rotate or not
         box_rot = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         entry_rot = Gtk.Entry()
         label_rot = Gtk.Label("Image Rotation")
-        if config.has_option('all', 'rotation'):
-            entry_rot.set_text(config.get('all', 'rotation'))
+        if config.has_option('img', 'rotation'):
+            entry_rot.set_text(config.get('img', 'rotation'))
         else:
             entry_rot.set_text("0")
 
         box_width = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         entry_width = Gtk.Entry()
         label_width = Gtk.Label("Image Width (1920)")
-        if config.has_option('all', 'width'):
-            entry_width.set_text(config.get('all', 'width'))
+        if config.has_option('img', 'width'):
+            entry_width.set_text(config.get('img', 'width'))
         else:
             entry_width.set_text("1920")
 
         box_height = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         entry_height = Gtk.Entry()
         label_height = Gtk.Label("Image Height (1080)")
-        if config.has_option('all', 'height'):
-            entry_height.set_text(config.get('all', 'height'))
+        if config.has_option('img', 'height'):
+            entry_height.set_text(config.get('img', 'height'))
         else:
             entry_height.set_text("1080")
 
         box_timelapse = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         entry_timelapse = Gtk.Entry()
         label_timelapse = Gtk.Label("Time between captures (in ms)")
-        if config.has_option('all', 'timelapse'):
-            entry_timelapse.set_text(config.get('all', 'timelapse'))
+        if config.has_option('img', 'timelapse'):
+            entry_timelapse.set_text(config.get('img', 'timelapse'))
         else:
             entry_timelapse.set_text("3000")
 
         box_quality = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         entry_quality = Gtk.Entry()
         label_quality = Gtk.Label("Quality")
-        if config.has_option('all', 'quality'):
-            entry_quality.set_text(config.get('all', 'quality'))
+        if config.has_option('img', 'quality'):
+            entry_quality.set_text(config.get('img', 'quality'))
         else:
             entry_quality.set_text("10")
 
@@ -238,15 +388,15 @@ class DisplayConf(Gtk.Window):
         label_encoding = Gtk.Label("Encoding format")
         # jpg bmp gif png
         # TOFIX
-        if config.has_option('all', 'encoding'):
-            print("IN CONFIG: " + config.get('all', 'encoding'))
+        if config.has_option('img', 'encoding'):
+            print("IN CONFIG: " + config.get('img', 'encoding'))
             #combo_encoding.set_active_iter(config.get('all', 'encoding'))
 
         box_image_name = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         entry_image_name = Gtk.Entry()
         label_image_name = Gtk.Label("Image Name (prefix)")
-        if config.has_option('all', 'image_name'):
-            entry_image_name.set_text(config.get('all', 'image_name'))
+        if config.has_option('img', 'image_name'):
+            entry_image_name.set_text(config.get('img', 'image_name'))
         else:
             entry_image_name.set_text('image_')
 
@@ -261,8 +411,8 @@ class DisplayConf(Gtk.Window):
         box_extra = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         entry_extra = Gtk.Entry()
         label_extra = Gtk.Label("Extra Options (See Help)")
-        if config.has_option('all', 'extra'):
-            entry_extra.set_text(config.get('all', 'extra'))
+        if config.has_option('img', 'extra'):
+            entry_extra.set_text(config.get('img', 'extra'))
         else:
             entry_extra.set_text("")
 
@@ -276,8 +426,6 @@ class DisplayConf(Gtk.Window):
         box_info_config.pack_start(label_info_config, False, False, 0)
         box_info_config.pack_start(entry_info_config, False, False, 0)
         box_info_config.pack_end(file_info_config, False, False, 0)
- #       box_raspistill.pack_start(label_raspistill, False, False, 0)
- #       box_raspistill.pack_end(entry_raspistill, False, False, 0)
         box_working_dir.pack_start(label_working_dir, False, False, 0)
         box_working_dir.pack_end(entry_working_dir, False, False, 0)
         box_rot.pack_start(label_rot, False, False, 0)
@@ -303,7 +451,6 @@ class DisplayConf(Gtk.Window):
         vbox.pack_start(self.help_button, False, False, 0)
 
         vboxconf = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
- #       vbox.pack_start(box_raspistill, False, False, 0)
         vboxconf.pack_start(box_info_config, False, False, 0)
         vboxconf.pack_start(box_working_dir, False, False, 0)
         vboxconf.pack_start(box_image_name, False, False, 0)
@@ -471,13 +618,13 @@ class MainBox(Gtk.Window):
         # create a hboxbut for button line and frame
         hboxbut = Gtk.Box()
         hboxbut.set_spacing(10)
+        hboxbut.pack_start(self.settings_button, True, True, 0)
         hboxbut.pack_start(self.t_button, True, True, 0)
         hboxbut.pack_start(self.test_spinner, False, False, 0)
         hboxbut.pack_start(self.c_button, True, True, 0)
-        hboxbut.pack_start(self.s_button, True, True, 0)
-        hboxbut.pack_end(self.settings_button, True, True, 0)
+        hboxbut.pack_end(self.s_button, True, True, 0)
         framebut = Gtk.Frame()
-        framebut.set_label("Command")
+        framebut.set_label("Image Capture Command")
         framebut.add(hboxbut)
         framebut.show()
 
@@ -486,12 +633,15 @@ class MainBox(Gtk.Window):
         self.hboxrender.set_spacing(10)
         self.render_button = Gtk.Button(label="Render")
         self.render_button.connect("clicked", self.render_timelapse)
+        self.video_settings_button = Gtk.Button(label="Settings")
+        self.video_settings_button.connect("clicked", self.on_video_conf)
         self.stop_render_button = Gtk.Button(label="Stop Rendering")
         self.stop_render_button.connect("clicked", self.stop_render)
         self.stop_render_button.set_sensitive(False)
         self.choose_image_button = Gtk.Button(label="Gthumb")
         self.choose_image_button.connect("clicked", self.launch_gthumb)
         self.render_spinner= Gtk.Spinner()
+        self.hboxrender.pack_start(self.video_settings_button, False, False, 0)
         self.hboxrender.pack_start(self.render_button, False, False, 0)
         self.hboxrender.pack_start(self.stop_render_button, False, False, 0)
         self.hboxrender.pack_start(self.choose_image_button, False, False, 0)
@@ -499,7 +649,7 @@ class MainBox(Gtk.Window):
         self.render_button.set_sensitive(False)
         self.render_button.set_tooltip_text("Create the video based on the capture")
         framerender = Gtk.Frame()
-        framerender.set_label("Create the Timelapse video")
+        framerender.set_label("Video Timelapse Command")
         framerender.add(self.hboxrender)
         framerender.show()
 
@@ -607,23 +757,32 @@ class MainBox(Gtk.Window):
                 buttons=Gtk.ButtonsType.OK,
                 text="Capture available: " + self.working_dir + "/test.jpg",
             )
+            imagename= self.working_dir + "/test." + self.encoding
+            if os.path.isfile(imagename):
+                self.img = Image.open(imagename)
+                sizeh = int(600/self.ratio)
+                newimg = self.img.resize((600, sizeh))
+                newimg.save(self.working_dir + "/_test." + self.encoding)
+                self.live.set_from_file(self.working_dir + "/_test." + self.encoding)
+
             self.c_button.set_sensitive(True)
             self.t_button.set_sensitive(True)
             self.render_button.set_sensitive(True)
             self.settings_button.set_sensitive(True)
+            self.live_on_button.set_sensitive(True)
             self.render_spinner.stop()
             dialog.run()
             dialog.destroy()
             return False
 
     def Update_rendering(self):
-        if self.sp.poll() is None:
+        if self.spvideo.poll() is None:
             print("Rendering in progress... ")
             return True
         else:
             print("Rendering Finished")
-            print(self.sp.stdout)
-            print(self.sp.stderr)
+            print(self.spvideo.stdout)
+            print(self.spvideo.stderr)
             self.render_button.set_sensitive(True)
             self.render_spinner.stop()
             dialog = Gtk.MessageDialog(
@@ -643,20 +802,24 @@ class MainBox(Gtk.Window):
         print('try to do rendering!')
         config = read_config()
         self.working_dir = config.get('all', 'working_dir')
-        encoding = config.get('all', 'encoding')
-        width = config.get('all', 'width')
-        height = config.get('all', 'height')
-        self.image_name = config.get('all', 'image_name')
+        self.image_name = config.get('img', 'image_name')
+        encoding = config.get('img', 'encoding')
+        framerate = config.get('video', 'framerate')
+        setpts = config.get('video', 'setpts')
+        vcodec = config.get('video', 'vcodec')
+        vwidth = config.get('video', 'width')
+        vheight = config.get('video', 'height')
+        vextra = config.get('video', 'extra')
 
-        cmd = "ffmpeg -y -r 30 -filter:v \"setpts=0.5*PTS\" -pattern_type glob -i \"" + self.working_dir + "/" + self.image_name + "*." + encoding + "\" " + " -s " + width + "x" + height + " -vcodec libx264 " + self.working_dir + "/output.mp4"
+        cmd = "ffmpeg -y -r " + framerate + " -filter:v \"setpts=" + setpts + "\" " + " -pattern_type glob -i \"" + self.working_dir + "/" + self.image_name + "*." + encoding + "\" " + " -s " + vwidth + "x" + vheight + " -vcodec " + vcodec + " " + self.working_dir + "/output.mp4"
         if os.path.isfile("/usr/bin/ffmpeg"):
-            print(cmd)
-            self.sp = subprocess.Popen(cmd, cwd=self.working_dir, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+#            print(cmd)
+            self.spvideo = subprocess.Popen(cmd, cwd=self.working_dir, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             self.render_button.set_sensitive(False)
             self.stop_render_button.set_sensitive(True)
             self.c_button.set_sensitive(False)
             self.render_spinner.start()
-            self.source_id = GLib.timeout_add(2000, self.Update_rendering, sp)
+            self.source_id = GLib.timeout_add(2000, self.Update_rendering)
 
         else:
             dialog = Gtk.MessageDialog(
@@ -681,7 +844,7 @@ class MainBox(Gtk.Window):
         if response == Gtk.ResponseType.YES:
             GLib.source_remove(self.source_id)
             # TOFIX
-            pid = self.sp.pid
+            pid = self.spvideo.pid
             print(pid)
             #cmd = "kill -9 " + str(pid)
             cmd = "killall ffmpeg"
@@ -712,8 +875,8 @@ class MainBox(Gtk.Window):
       imagename= self.working_dir + "/" + self.image_name + str(c).zfill(4) + "." + self.encoding
       if os.path.isfile(imagename):
           self.img = Image.open(imagename)
-          sizeh = int(400/self.ratio)
-          newimg = self.img.resize((400, sizeh))
+          sizeh = int(600/self.ratio)
+          newimg = self.img.resize((600, sizeh))
           newimg.save(self.working_dir + "/_live_record_rpi." + self.encoding)
           self.live.set_from_file(self.working_dir + "/_live_record_rpi." + self.encoding)
       else:
@@ -722,15 +885,15 @@ class MainBox(Gtk.Window):
     
     def test_capture(self, button):
         config = read_config()
-        rot= config.get('all', 'rotation')
+        rot= config.get('img', 'rotation')
         #raspistill = config.get('all', 'raspistill')
-        self.image_name = config.get('all', 'image_name')
-        width = config.get('all', 'width')
-        height = config.get('all', 'height')
-        quality = config.get('all', 'quality')
+        self.image_name = config.get('img', 'image_name')
+        width = config.get('img', 'width')
+        height = config.get('img', 'height')
+        quality = config.get('img', 'quality')
         self.working_dir = config.get('all', 'working_dir')
-        self.encoding = config.get('all', 'encoding')
-        extra = config.get('all', 'extra')
+        self.encoding = config.get('img', 'encoding')
+        extra = config.get('img', 'extra')
         # be sure working dir exist
         if not os.path.exists(self.working_dir):
             os.makedirs(self.working_dir)
@@ -741,6 +904,7 @@ class MainBox(Gtk.Window):
         self.c_button.set_sensitive(False)
         self.settings_button.set_sensitive(False)
         self.t_button.set_sensitive(False)
+        self.ratio = float(int(width)/int(height))
         print('Start Capturing a test')
         command = "raspistill" + " -rot " + rot + " -o " + self.working_dir + "/test." + self.encoding + " --width " + width + " --height " + height + " --quality " + quality +  " --encoding " + self.encoding + " " + extra
                 #+ "2> /tmp/_datafile"
@@ -763,16 +927,16 @@ class MainBox(Gtk.Window):
             dialog.destroy()
         else:
             config = read_config()
-            rot= config.get('all', 'rotation')
+            rot= config.get('img', 'rotation')
             #raspistill = config.get('all', 'raspistill')
-            self.image_name = config.get('all', 'image_name')
-            width = config.get('all', 'width')
-            height = config.get('all', 'height')
-            quality = config.get('all', 'quality')
-            self.encoding = config.get('all', 'encoding')
-            self.timelapse = config.get('all', 'timelapse')
+            self.image_name = config.get('img', 'image_name')
+            width = config.get('img', 'width')
+            height = config.get('img', 'height')
+            quality = config.get('img', 'quality')
+            self.encoding = config.get('img', 'encoding')
+            self.timelapse = config.get('img', 'timelapse')
             self.working_dir = config.get('all', 'working_dir')
-            extra = config.get('all', 'extra')
+            extra = config.get('img', 'extra')
             # be sure working dir exist
             if not os.path.exists(self.working_dir):
                 os.makedirs(self.working_dir)
@@ -867,6 +1031,10 @@ class MainBox(Gtk.Window):
 
     def on_set_conf(self, widget):
         dialog = DisplayConf(self)
+
+    def on_video_conf(self, widget):
+        print("plop")
+        dialog = DisplayVideoConf(self)
 
 
 # MAIN
