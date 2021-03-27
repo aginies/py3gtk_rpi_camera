@@ -54,9 +54,9 @@ There is probably plenty of other features that this tool can have :)
 # Images
 
 ![](images/interface.jpg)
-
 ![](images/settings.jpg)
-
 ![](images/help.jpg)
-
 ![](images/live.jpg)
+![](images/test.jpg)
+![](images/vsettings.jpg)
+
