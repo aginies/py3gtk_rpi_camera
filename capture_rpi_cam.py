@@ -973,7 +973,7 @@ class MainBox(Gtk.Window):
                 self.nb_capture.set_visible(True)
                 print('Start Capturing')
                 self.status.set_text("Capture ON")
-                command = "raspistill" + " -rot " + rot + " --timelapse " + self.timelapse + " -o " + self.image_name + str(chr(37)) +"04d." + self.encoding + " --width " + width + " --height " + height + " --quality " + quality +  " -t 0" + " --encoding " + self.encoding + " -a " + datetime.now().strftime(\""%d/%m/%Y %H:%M:%S\"") + " " + extra 
+                command = "raspistill" + " -rot " + rot + " --timelapse " + self.timelapse + " -o " + self.image_name + str(chr(37)) +"04d." + self.encoding + " --width " + width + " --height " + height + " --quality " + quality +  " -t 0" + " --encoding " + self.encoding + " -a " + datetime.now().strftime("\"%d/%m/%Y %H:%M:%S\"") + " " + extra 
                 #+ "2> /tmp/_datafile"
                 print(command)
     
