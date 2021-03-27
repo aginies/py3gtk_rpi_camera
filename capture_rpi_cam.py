@@ -1,8 +1,7 @@
 #!/usr/bin/python3
-# version 1.0
 #
 # first program to learn python and Gtk
-# Capture images and create a timelapse video using an RPI camera
+# Capture images an create a timelapse using an RPI camera
 # requires: ffmpeg, raspistill (optional gthumb for triage)
 # antoine@ginies.org
 #
@@ -45,7 +44,6 @@ def read_config():
             config.read('config.ini')
             if config.has_section("all") != True:
                 config.add_section('all')
-            config.set('all', 'verbose', "false")
             config.set('all', 'configfile', 'config.ini')
             config.set('all', 'working_dir', '/tmp/')
             config.set('all', 'rotation', '180')
@@ -97,12 +95,6 @@ class DisplayConf(Gtk.Window):
             print("saving file")
             fp = open(entry_info_config.get_text(), 'w')
 
-            if button_verbose.get_active() == 1:
-                print("true")
-                config.set('all', 'verbose', "true")
-            else:
-                print("false")
-                config.set('all', 'verbose', "false")
             config.set('all', 'configfile', entry_info_config.get_text())
             config.set('all', 'working_dir', entry_working_dir.get_text())
             config.set('all', 'rotation', entry_rot.get_text())
@@ -111,24 +103,21 @@ class DisplayConf(Gtk.Window):
             config.set('all', 'width', entry_width.get_text())
             config.set('all', 'height', entry_height.get_text())
             config.set('all', 'quality', entry_quality.get_text())
-            config.set('all', 'encoding', entry_encoding.get_text())
+            config.set('all', 'encoding', combo_encoding.get_active_text())
             config.set('all', 'timelapse', entry_timelapse.get_text())
             config.set('all', 'extra', entry_extra.get_text())
             config.write(fp)
             fp.close()
             self.destroy()
 
+        def on_encoding_changed(combo):
+            text = combo.get_active_text()
+            if text is not None:
+                print("DEBUG Selected: encoding=%s" % text)
 
         def on_clicked_cancel(button_cancel):
             print("cancel")
             self.destroy()
-
-        def on_button_ckeck_verbose(button, button_verbose):
-            if button.get_active():
-                state = "on"
-                print("Verbose on")
-            else:
-                print("Verbose off")
 
         def on_file_clicked(widget):
             dialog = Gtk.FileChooserDialog(
@@ -156,6 +145,21 @@ class DisplayConf(Gtk.Window):
 
             dialog.destroy()
 
+        def test_setting(self, button):
+            # be sure working dir exist
+            if not os.path.exists(self.working_dir):
+                os.makedirs(self.working_dir)
+            print('Start Capturing a test')
+            command = "raspistill" + " -rot " + rot + " -o " + self.image_name + str(chr(37)) +"04d." + self.encoding + " --width " + width + " --height " + height + " --quality " + quality +  " --encoding " + self.encoding + " " + extra
+                    #+ "2> /tmp/_datafile"
+            print(command)
+            self.sptest = subprocess.Popen(command, cwd=self.working_dir, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            rctest = sptest.wait()
+            try:
+                outs, errs = sptest.communicate(timeout=2)
+            except TimeoutExpired:
+                sptest.kill()
+                outs, errs = sptest.communicate()
 
         #
         # read from config file
@@ -163,15 +167,14 @@ class DisplayConf(Gtk.Window):
 
         self.help_button = Gtk.Button(label="raspistill Help")
         self.help_button.connect("clicked", show_help)
- 
 
         box_info_config = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         entry_info_config = Gtk.Entry()
         label_info_config = Gtk.Label("Path to config file")
         if config.has_option('all', 'configfile'):
             entry_info_config.set_text(config.get('all', 'configfile'))
-#        else:
-#            entry_info_config.set_text("config.ini")
+        else:
+            entry_info_config.set_text("config.ini")
         file_info_config = Gtk.Button(label="Choose File")
         file_info_config.connect("clicked", on_file_clicked)
 
@@ -194,7 +197,7 @@ class DisplayConf(Gtk.Window):
 
         box_width = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         entry_width = Gtk.Entry()
-        label_width = Gtk.Label("Image Width")
+        label_width = Gtk.Label("Image Width (1920)")
         if config.has_option('all', 'width'):
             entry_width.set_text(config.get('all', 'width'))
         else:
@@ -202,7 +205,7 @@ class DisplayConf(Gtk.Window):
 
         box_height = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         entry_height = Gtk.Entry()
-        label_height = Gtk.Label("Image Height")
+        label_height = Gtk.Label("Image Height (1080)")
         if config.has_option('all', 'height'):
             entry_height.set_text(config.get('all', 'height'))
         else:
@@ -224,21 +227,20 @@ class DisplayConf(Gtk.Window):
         else:
             entry_quality.set_text("10")
 
-        box_verbose = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        label_verbose = Gtk.Label("Verbose")
-        button_verbose = Gtk.CheckButton()
-        if config.has_option('all', 'verbose'):
-            if config.get('all', 'verbose') == "true":
-                button_verbose.set_active("True")
-        button_verbose.connect("toggled", on_button_ckeck_verbose, "1")
-
         box_encoding = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        entry_encoding = Gtk.Entry()
+        encoding_list = [ "jpg", "bmp", "gif", "png"]
+        combo_encoding = Gtk.ComboBoxText()
+        combo_encoding.set_entry_text_column(0)
+        combo_encoding.connect("changed", on_encoding_changed)
+        for data in encoding_list:
+            combo_encoding.append_text(data)
+        combo_encoding.set_active(0)
         label_encoding = Gtk.Label("Encoding format")
+        # jpg bmp gif png
+        # TOFIX
         if config.has_option('all', 'encoding'):
-            entry_encoding.set_text(config.get('all', 'encoding'))
-        else:
-            entry_encoding.set_text("jpg")
+            print("IN CONFIG: " + config.get('all', 'encoding'))
+            #combo_encoding.set_active_iter(config.get('all', 'encoding'))
 
         box_image_name = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         entry_image_name = Gtk.Entry()
@@ -246,7 +248,7 @@ class DisplayConf(Gtk.Window):
         if config.has_option('all', 'image_name'):
             entry_image_name.set_text(config.get('all', 'image_name'))
         else:
-            entry_image_name.set_text('image_' + format(percent) + '04d.jpg')
+            entry_image_name.set_text('image_')
 
         box_working_dir = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         entry_working_dir = Gtk.Entry()
@@ -258,7 +260,7 @@ class DisplayConf(Gtk.Window):
 
         box_extra = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         entry_extra = Gtk.Entry()
-        label_extra = Gtk.Label("Extra Options")
+        label_extra = Gtk.Label("Extra Options (See Help)")
         if config.has_option('all', 'extra'):
             entry_extra.set_text(config.get('all', 'extra'))
         else:
@@ -287,9 +289,7 @@ class DisplayConf(Gtk.Window):
         box_image_name.pack_start(label_image_name, False, False, 0)
         box_image_name.pack_end(entry_image_name, False, False, 0)
         box_encoding.pack_start(label_encoding, False, False, 0)
-        box_encoding.pack_end(entry_encoding, False, False, 0)
-        box_verbose.pack_start(label_verbose, False, False, 0)
-        box_verbose.pack_end(button_verbose, False, False, 0)
+        box_encoding.pack_end(combo_encoding, False, False, 0)
         box_ok_cancel.pack_start(button_cancel, False, False, 0)
         box_ok_cancel.pack_end(button_ok, False, False, 0)
         box_timelapse.pack_start(label_timelapse, False, False, 0)
@@ -313,8 +313,8 @@ class DisplayConf(Gtk.Window):
 
         vboximg = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         vboximg.pack_start(box_rot, False, False, 0)
-        vboximg.pack_start(box_height, False, False, 0)
         vboximg.pack_start(box_width, False, False, 0)
+        vboximg.pack_start(box_height, False, False, 0)
         vboximg.pack_start(box_encoding, False, False, 0)
         vboximg.pack_start(box_quality, False, False, 0)
         frameimage = Gtk.Frame()
@@ -324,7 +324,6 @@ class DisplayConf(Gtk.Window):
         vboxmore = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         vboxmore.pack_start(box_timelapse, False, False, 0)
         vboxmore.pack_start(box_extra, False, False, 0)
-        vboxmore.pack_start(box_verbose, False, False, 0)
         framemore = Gtk.Frame()
         framemore.add(vboxmore)
         framemore.show()
@@ -420,10 +419,15 @@ class MainBox(Gtk.Window):
         self.c_button = Gtk.Button(label="Capture")
         self.c_button.set_tooltip_text("Start capturing timelapse")
         self.c_button.connect("clicked", self.start_capture)
+        self.t_button = Gtk.Button(label="Test")
+        self.t_button.set_tooltip_text("Test a capture with current setting")
+        self.t_button.connect("clicked", self.test_capture)
+        self.test_spinner= Gtk.Spinner()
         self.s_button = Gtk.Button(label="Stop")
         self.s_button.set_tooltip_text("Stop to capture timelapse")
         self.s_button.set_sensitive(False)
         self.s_button.connect("clicked", self.stop_capture)
+
         self.settings_button = Gtk.Button(label="Settings")
         self.settings_button.set_tooltip_text("Configure all options for the Timelapse")
         #https://developer.gnome.org/gnome-devel-demos/stable/tooltip.py.html.en
@@ -467,9 +471,11 @@ class MainBox(Gtk.Window):
         # create a hboxbut for button line and frame
         hboxbut = Gtk.Box()
         hboxbut.set_spacing(10)
+        hboxbut.pack_start(self.t_button, True, True, 0)
+        hboxbut.pack_start(self.test_spinner, False, False, 0)
+        hboxbut.pack_start(self.c_button, True, True, 0)
+        hboxbut.pack_start(self.s_button, True, True, 0)
         hboxbut.pack_end(self.settings_button, True, True, 0)
-        hboxbut.pack_end(self.c_button, True, True, 0)
-        hboxbut.pack_end(self.s_button, True, True, 0)
         framebut = Gtk.Frame()
         framebut.set_label("Command")
         framebut.add(hboxbut)
@@ -584,6 +590,32 @@ class MainBox(Gtk.Window):
     def on_error(self, bus, msg):
         print('on_error():', msg.parse_error())
 
+    def Update_test_rendering(self):
+        if self.sptest.poll() is None:
+            print("Capture in progress... ")
+            return True
+        else:
+            print("Capture Finished")
+            print(self.sptest.stdout)
+            print(self.sptest.stderr)
+            self.t_button.set_sensitive(True)
+            self.render_spinner.stop()
+            dialog = Gtk.MessageDialog(
+                transient_for=self,
+                flags=0,
+                message_type=Gtk.MessageType.INFO,
+                buttons=Gtk.ButtonsType.OK,
+                text="Capture available: " + self.working_dir + "/test.jpg",
+            )
+            self.c_button.set_sensitive(True)
+            self.t_button.set_sensitive(True)
+            self.render_button.set_sensitive(True)
+            self.settings_button.set_sensitive(True)
+            self.render_spinner.stop()
+            dialog.run()
+            dialog.destroy()
+            return False
+
     def Update_rendering(self):
         if self.sp.poll() is None:
             print("Rendering in progress... ")
@@ -616,7 +648,7 @@ class MainBox(Gtk.Window):
         height = config.get('all', 'height')
         self.image_name = config.get('all', 'image_name')
 
-        cmd = "ffmpeg -y -r 10 -pattern_type glob -i \"" + self.working_dir + "/" + self.image_name + "*." + encoding + "\" " + " -s " + width + "x" + height + " -vcodec libx264 " + self.working_dir + "/output.mp4"
+        cmd = "ffmpeg -y -r 30 -filter:v \"setpts=0.5*PTS\" -pattern_type glob -i \"" + self.working_dir + "/" + self.image_name + "*." + encoding + "\" " + " -s " + width + "x" + height + " -vcodec libx264 " + self.working_dir + "/output.mp4"
         if os.path.isfile("/usr/bin/ffmpeg"):
             print(cmd)
             self.sp = subprocess.Popen(cmd, cwd=self.working_dir, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -624,7 +656,7 @@ class MainBox(Gtk.Window):
             self.stop_render_button.set_sensitive(True)
             self.c_button.set_sensitive(False)
             self.render_spinner.start()
-            self.source_id = GLib.timeout_add(2000, self.Update_rendering)
+            self.source_id = GLib.timeout_add(2000, self.Update_rendering, sp)
 
         else:
             dialog = Gtk.MessageDialog(
@@ -650,7 +682,9 @@ class MainBox(Gtk.Window):
             GLib.source_remove(self.source_id)
             # TOFIX
             pid = self.sp.pid
-            cmd = "kill -9 " + str(pid)
+            print(pid)
+            #cmd = "kill -9 " + str(pid)
+            cmd = "killall ffmpeg"
             proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             rc = proc.wait()
             try:
@@ -685,9 +719,38 @@ class MainBox(Gtk.Window):
       else:
           print("image not ready... bypassing")
       return True
+    
+    def test_capture(self, button):
+        config = read_config()
+        rot= config.get('all', 'rotation')
+        #raspistill = config.get('all', 'raspistill')
+        self.image_name = config.get('all', 'image_name')
+        width = config.get('all', 'width')
+        height = config.get('all', 'height')
+        quality = config.get('all', 'quality')
+        self.working_dir = config.get('all', 'working_dir')
+        self.encoding = config.get('all', 'encoding')
+        extra = config.get('all', 'extra')
+        # be sure working dir exist
+        if not os.path.exists(self.working_dir):
+            os.makedirs(self.working_dir)
+        self.live_on_button.set_sensitive(False)
+        self.live_off_button.set_sensitive(False)
+        self.vboxlive.remove(self.drawingarea)
+        self.vboxlive.add(self.live)
+        self.c_button.set_sensitive(False)
+        self.settings_button.set_sensitive(False)
+        self.t_button.set_sensitive(False)
+        print('Start Capturing a test')
+        command = "raspistill" + " -rot " + rot + " -o " + self.working_dir + "/test." + self.encoding + " --width " + width + " --height " + height + " --quality " + quality +  " --encoding " + self.encoding + " " + extra
+                #+ "2> /tmp/_datafile"
+        print(command)
+        self.sptest = subprocess.Popen(command, cwd=self.working_dir, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.render_spinner.start()
+        self.source_id = GLib.timeout_add(2000, self.Update_test_rendering)
 
     def start_capture(self, button):
-        #raspistill -rot 180 --timelapse 3000 -o img_%04d.jpg --width 1920 --height 1080 --verbose --focus --encoding jpg --quality 10 -t 0
+        #raspistill -rot 180 --timelapse 3000 -o img_%04d.jpg --width 1920 --height 1080 --focus --encoding jpg --quality 10 -t 0
         if self.status.get_text() == "Capture ON":
             dialog = Gtk.MessageDialog(
                 transient_for=self,
@@ -701,7 +764,7 @@ class MainBox(Gtk.Window):
         else:
             config = read_config()
             rot= config.get('all', 'rotation')
-            raspistill = config.get('all', 'raspistill')
+            #raspistill = config.get('all', 'raspistill')
             self.image_name = config.get('all', 'image_name')
             width = config.get('all', 'width')
             height = config.get('all', 'height')
@@ -723,7 +786,7 @@ class MainBox(Gtk.Window):
             )
             response = dialog.run()
             if response == Gtk.ResponseType.YES:
-                cmd = "rm -rvf *." + self.encoding
+                cmd = "rm -rvf " + self.image_name + "*." + self.encoding
                 proc = subprocess.Popen(cmd, cwd=self.working_dir, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 rc = proc.wait()
                 try:
@@ -738,18 +801,16 @@ class MainBox(Gtk.Window):
                 self.vboxlive.add(self.live)
                 self.c_button.set_sensitive(False)
                 self.settings_button.set_sensitive(False)
+                self.t_button.set_sensitive(False)
                 self.s_button.set_sensitive(True)
                 self.nb_capture.set_visible(True)
                 print('Start Capturing')
                 self.status.set_text("Capture ON")
 
-                if config.get('all', 'verbose') == "true":
-                    verbose = "--verbose"
-                else:
-                    verbose = ""
-                command = raspistill + " -rot " + rot + " --timelapse " + self.timelapse + " -o " + self.image_name + str(chr(37)) +"04d." + self.encoding + " --width " + width + " --height " + height + " --quality " + quality +  " -t 0" + " --encoding " + self.encoding + " " + extra
+                command = "raspistill" + " -rot " + rot + " --timelapse " + self.timelapse + " -o " + self.image_name + str(chr(37)) +"04d." + self.encoding + " --width " + width + " --height " + height + " --quality " + quality +  " -t 0" + " --encoding " + self.encoding + " " + extra
                 #+ "2> /tmp/_datafile"
-
+                print(command)
+    
                 self.sp = subprocess.Popen(command, cwd=self.working_dir, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 self.ratio = float(int(width)/int(height))
                 # wait for first image
@@ -780,7 +841,9 @@ class MainBox(Gtk.Window):
             if response == Gtk.ResponseType.YES:
                 GLib.source_remove(self.source_id)
                 pid = self.sp.pid
-                cmd = "kill -9 " + str(pid)
+                print(pid)
+                #cmd = "kill -9 " + str(pid)
+                cmd = "killall raspistill"
                 proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 rc = proc.wait()
                 try:
