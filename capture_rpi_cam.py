@@ -529,9 +529,9 @@ class MainBox(Gtk.Window):
         newimg.save('/tmp/_cover.jpg')
         self.live = Gtk.Image()
         self.live.set_from_file("/tmp/_cover.jpg")
-        self.live_on_button = Gtk.Button(label="Live On")
+        self.live_on_button = Gtk.Button(label="Live ON")
         self.live_on_button.connect("clicked", self.start_live)
-        self.live_off_button = Gtk.Button(label="Live Off")
+        self.live_off_button = Gtk.Button(label="Live OFF")
         self.live_off_button.set_sensitive(False)
         self.live_off_button.connect("clicked", self.stop_live)
         # vbox contains status and live
@@ -601,16 +601,17 @@ class MainBox(Gtk.Window):
         vboxs.set_orientation(Gtk.Orientation.VERTICAL)
         vboxs.set_spacing(10)
         vboxs.pack_start(self.status, True, False, 1)
+        vboxs.pack_start(self.test_spinner, False, False, 0)
         self.nb_capture.set_visible(False)
         vboxs.pack_start(self.nb_capture, False, False, 0)
 
         framestatus = Gtk.Frame()
-        framestatus.set_label("Timelapse Status")
+        framestatus.set_label("Status")
         framestatus.add(vboxs)
         framestatus.show()
 
         self.framelive = Gtk.Frame()
-        self.framelive.set_label("Live (Off)")
+        self.framelive.set_label("Live (OFF)")
         self.framelive.set_tooltip_text("Live ON/OFF | Capture (ON/OFF)")
         self.framelive.add(self.vboxlive)
         self.framelive.show()
@@ -620,7 +621,6 @@ class MainBox(Gtk.Window):
         hboxbut.set_spacing(10)
         hboxbut.pack_start(self.settings_button, True, True, 0)
         hboxbut.pack_start(self.t_button, True, True, 0)
-        hboxbut.pack_start(self.test_spinner, False, False, 0)
         hboxbut.pack_start(self.c_button, True, True, 0)
         hboxbut.pack_end(self.s_button, True, True, 0)
         framebut = Gtk.Frame()
@@ -695,7 +695,7 @@ class MainBox(Gtk.Window):
        # Create GStreamer pipeline
         self.vboxlive.remove(self.live)
         self.vboxlive.add(self.drawingarea)
-        self.framelive.set_label("Live (On)")
+        self.framelive.set_label("Live (ON)")
         self.live_on_button.set_sensitive(False)
         self.live_off_button.set_sensitive(True)
         self.c_button.set_sensitive(False)
@@ -713,7 +713,7 @@ class MainBox(Gtk.Window):
         self.runvideo()
 
     def stop_live(self, button):
-        self.framelive.set_label("Live (Off)")
+        self.framelive.set_label("Live (OFF)")
         self.vboxlive.remove(self.drawingarea)
         self.vboxlive.add(self.live)
         self.live_on_button.set_sensitive(True)
@@ -749,7 +749,7 @@ class MainBox(Gtk.Window):
             print(self.sptest.stdout)
             print(self.sptest.stderr)
             self.t_button.set_sensitive(True)
-            self.render_spinner.stop()
+            self.test_spinner.stop()
             dialog = Gtk.MessageDialog(
                 transient_for=self,
                 flags=0,
@@ -770,7 +770,8 @@ class MainBox(Gtk.Window):
             self.render_button.set_sensitive(True)
             self.settings_button.set_sensitive(True)
             self.live_on_button.set_sensitive(True)
-            self.render_spinner.stop()
+            self.status.set_text("Capture OFF")
+            self.test_spinner.stop()
             dialog.run()
             dialog.destroy()
             return False
@@ -909,8 +910,9 @@ class MainBox(Gtk.Window):
         command = "raspistill" + " -rot " + rot + " -o " + self.working_dir + "/test." + self.encoding + " --width " + width + " --height " + height + " --quality " + quality +  " --encoding " + self.encoding + " " + extra
                 #+ "2> /tmp/_datafile"
         print(command)
+        self.status.set_text("Testing a Capture")
         self.sptest = subprocess.Popen(command, cwd=self.working_dir, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        self.render_spinner.start()
+        self.test_spinner.start()
         self.source_id = GLib.timeout_add(2000, self.Update_test_rendering)
 
     def start_capture(self, button):
@@ -979,7 +981,7 @@ class MainBox(Gtk.Window):
                 self.ratio = float(int(width)/int(height))
                 # wait for first image
                 self.live.set_from_file("/usr/share/icons/gnome/48x48/status/image-loading.png")
-                self.framelive.set_label("Capture (On)")
+                self.framelive.set_label("Capture (ON)")
                 # wait for first image...
                 time.sleep(2)
                 self.source_id = GLib.timeout_add(int(self.timelapse), self.Update_info, self)
@@ -1016,7 +1018,7 @@ class MainBox(Gtk.Window):
                     proc.kill()
                     outs, errs = proc.communicate()
                 self.status.set_text("Capture OFF")
-                self.framelive.set_label("Live (Off)")
+                self.framelive.set_label("Live (OFF)")
                 self.c_button.set_sensitive(True)
                 self.settings_button.set_sensitive(True)
                 self.s_button.set_sensitive(False)
