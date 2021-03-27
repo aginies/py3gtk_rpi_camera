@@ -15,6 +15,7 @@ import io
 import time
 import threading
 import os.path
+from datetime import datetime
 
 gi.require_version('Gst', '1.0')
 gi.require_version('GdkX11', '3.0')
@@ -150,7 +151,7 @@ class DisplayVideoConf(Gtk.Window):
 
         box_steptps = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         entry_setpts = Gtk.Entry()
-        label_setpts = Gtk.Label("Video Acceleration")
+        label_setpts = Gtk.Label("Video Acceleration (NOT USED)")
         if config.has_option('video', 'setpts'):
             entry_setpts.set_text(config.get('video', 'setpts'))
         else:
@@ -453,12 +454,12 @@ class DisplayConf(Gtk.Window):
         vboxconf = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         vboxconf.pack_start(box_info_config, False, False, 0)
         vboxconf.pack_start(box_working_dir, False, False, 0)
-        vboxconf.pack_start(box_image_name, False, False, 0)
         frameconf = Gtk.Frame()
         frameconf.add(vboxconf)
         frameconf.show()
 
         vboximg = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        vboximg.pack_start(box_image_name, False, False, 0)
         vboximg.pack_start(box_rot, False, False, 0)
         vboximg.pack_start(box_width, False, False, 0)
         vboximg.pack_start(box_height, False, False, 0)
@@ -699,7 +700,7 @@ class MainBox(Gtk.Window):
         self.live_on_button.set_sensitive(False)
         self.live_off_button.set_sensitive(True)
         self.c_button.set_sensitive(False)
-        self.pipeline = Gst.parse_launch("v4l2src device=" + video_dev + " ! tee name=tee ! queue name=videoqueue ! deinterlace ! xvimagesink")
+        self.pipeline = Gst.parse_launch("v4l2src device=" + video_dev + " ! tee name=tee ! queue name=videoqueue ! deinterlace ! videoflip method=2 ! xvimagesink ")
 
         # Create bus to get events from GStreamer pipeline
         bus = self.pipeline.get_bus()
@@ -812,9 +813,10 @@ class MainBox(Gtk.Window):
         vheight = config.get('video', 'height')
         vextra = config.get('video', 'extra')
 
-        cmd = "ffmpeg -y -r " + framerate + " -filter:v \"setpts=" + setpts + "\" " + " -pattern_type glob -i \"" + self.working_dir + "/" + self.image_name + "*." + encoding + "\" " + " -s " + vwidth + "x" + vheight + " -vcodec " + vcodec + " " + self.working_dir + "/output.mp4"
+        #cmd = "ffmpeg -y -r " + framerate + " -filter:v \"setpts=" + setpts + "\" " + " -pattern_type glob -i \"" + self.working_dir + "/" + self.image_name + "*." + encoding + "\" " + " -s " + vwidth + "x" + vheight + " -vcodec " + vcodec + " " + self.working_dir + "/output.mp4"
+        cmd = "ffmpeg -y -r " + framerate + " -pattern_type glob -i \"" + self.working_dir + "/" + self.image_name + "*." + encoding + "\" " + " -s " + vwidth + "x" + vheight + " -vcodec " + vcodec + " " + self.working_dir + "/output.mp4"
         if os.path.isfile("/usr/bin/ffmpeg"):
-#            print(cmd)
+            print(cmd)
             self.spvideo = subprocess.Popen(cmd, cwd=self.working_dir, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             self.render_button.set_sensitive(False)
             self.stop_render_button.set_sensitive(True)
@@ -846,6 +848,7 @@ class MainBox(Gtk.Window):
             GLib.source_remove(self.source_id)
             # TOFIX
             pid = self.spvideo.pid
+            #pid += 1
             print(pid)
             #cmd = "kill -9 " + str(pid)
             cmd = "killall ffmpeg"
@@ -881,13 +884,13 @@ class MainBox(Gtk.Window):
           newimg.save(self.working_dir + "/_live_record_rpi." + self.encoding)
           self.live.set_from_file(self.working_dir + "/_live_record_rpi." + self.encoding)
       else:
+          self.status.set_text("Cant grab any Images....")
           print("image not ready... bypassing")
       return True
     
     def test_capture(self, button):
         config = read_config()
         rot= config.get('img', 'rotation')
-        #raspistill = config.get('all', 'raspistill')
         self.image_name = config.get('img', 'image_name')
         width = config.get('img', 'width')
         height = config.get('img', 'height')
@@ -907,8 +910,7 @@ class MainBox(Gtk.Window):
         self.t_button.set_sensitive(False)
         self.ratio = float(int(width)/int(height))
         print('Start Capturing a test')
-        command = "raspistill" + " -rot " + rot + " -o " + self.working_dir + "/test." + self.encoding + " --width " + width + " --height " + height + " --quality " + quality +  " --encoding " + self.encoding + " " + extra
-                #+ "2> /tmp/_datafile"
+        command = "raspistill" + " -rot " + rot + " -o " + self.working_dir + "/test." + self.encoding + " --width " + width + " --height " + height + " --quality " + quality +  " --encoding " + self.encoding + " -a " + datetime.now().strftime("\"%d/%m/%Y %H:%M:%S\"") + " " + extra 
         print(command)
         self.status.set_text("Testing a Capture")
         self.sptest = subprocess.Popen(command, cwd=self.working_dir, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -916,7 +918,6 @@ class MainBox(Gtk.Window):
         self.source_id = GLib.timeout_add(2000, self.Update_test_rendering)
 
     def start_capture(self, button):
-        #raspistill -rot 180 --timelapse 3000 -o img_%04d.jpg --width 1920 --height 1080 --focus --encoding jpg --quality 10 -t 0
         if self.status.get_text() == "Capture ON":
             dialog = Gtk.MessageDialog(
                 transient_for=self,
@@ -952,7 +953,7 @@ class MainBox(Gtk.Window):
             )
             response = dialog.run()
             if response == Gtk.ResponseType.YES:
-                cmd = "rm -rvf " + self.image_name + "*." + self.encoding
+                cmd = "rm -vf " + self.image_name + "*." + self.encoding
                 proc = subprocess.Popen(cmd, cwd=self.working_dir, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 rc = proc.wait()
                 try:
@@ -972,15 +973,19 @@ class MainBox(Gtk.Window):
                 self.nb_capture.set_visible(True)
                 print('Start Capturing')
                 self.status.set_text("Capture ON")
-
-                command = "raspistill" + " -rot " + rot + " --timelapse " + self.timelapse + " -o " + self.image_name + str(chr(37)) +"04d." + self.encoding + " --width " + width + " --height " + height + " --quality " + quality +  " -t 0" + " --encoding " + self.encoding + " " + extra
+                command = "raspistill" + " -rot " + rot + " --timelapse " + self.timelapse + " -o " + self.image_name + str(chr(37)) +"04d." + self.encoding + " --width " + width + " --height " + height + " --quality " + quality +  " -t 0" + " --encoding " + self.encoding + " -a " + datetime.now().strftime(\""%d/%m/%Y %H:%M:%S\"") + " " + extra 
                 #+ "2> /tmp/_datafile"
                 print(command)
     
                 self.sp = subprocess.Popen(command, cwd=self.working_dir, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 self.ratio = float(int(width)/int(height))
                 # wait for first image
-                self.live.set_from_file("/usr/share/icons/gnome/48x48/status/image-loading.png")
+                loadingimg = "/usr/share/icons/gnome/48x48/status/image-loading.png"
+                if os.path.isfile(loadingimg):
+                    self.live.set_from_file(loadingimg)
+                else:
+                    print("Missing image:" + loadingimg)
+
                 self.framelive.set_label("Capture (ON)")
                 # wait for first image...
                 time.sleep(2)
@@ -1006,9 +1011,9 @@ class MainBox(Gtk.Window):
             response = dialog.run()
             if response == Gtk.ResponseType.YES:
                 GLib.source_remove(self.source_id)
-                pid = self.sp.pid
-                print(pid)
-                #cmd = "kill -9 " + str(pid)
+                #pid = self.sp.pid
+                #print("Capture Pid: " + str(pid))
+                #cmd = "kill -9 " + str(pid) + " " + str(int(pid + 1))
                 cmd = "killall raspistill"
                 proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 rc = proc.wait()
