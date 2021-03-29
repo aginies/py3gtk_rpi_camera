@@ -75,8 +75,9 @@ There is probably plenty of other features that this tool can have :)
 
 ![](images/interface.jpg)
 ![](images/settings.jpg)
+![](images/vsettings.jpg)
+![](images/isettings.jpg)
 ![](images/help.jpg)
 ![](images/live.jpg)
 ![](images/test.jpg)
-![](images/vsettings.jpg)
 
