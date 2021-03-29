@@ -51,6 +51,7 @@ def read_config():
                 config.add_section('video')
             config.set('all', 'configfile', 'config.ini')
             config.set('all', 'working_dir', '/tmp/')
+            config.set('all', 'live_camera_180', "true")
             config.set('img', 'rotation', '180')
             config.set('img', 'image_name', 'image')
             config.set('img', 'width', '1920')
@@ -220,7 +221,131 @@ class DisplayVideoConf(Gtk.Window):
         vbox.pack_end(box_ok_cancel, False, False, 0)
         self.show_all()
 
-class DisplayConf(Gtk.Window):
+class DisplayAllConf(Gtk.Window):
+    def __init__(self, parent):
+        Gtk.Window.__init__(self, title="Application Settings", transient_for=parent)
+
+        self.set_default_size(640, 480)
+        self.set_border_width(10)
+
+        def on_clicked_ok(button_ok):
+            print("saving file")
+            fp = open(entry_info_config.get_text(), 'w')
+            config.set('all', 'configfile', entry_info_config.get_text())
+            config.set('all', 'working_dir', entry_working_dir.get_text())
+            if self.live_camera_180.get_active() == 1:
+                config.set('all', 'live_camera_180', 'true')
+            else:
+                config.set('all', 'live_camera_180', 'false')
+            config.write(fp)
+            fp.close()
+            self.destroy()
+
+        def on_clicked_cancel(button_cancel):
+            print("cancel")
+            self.destroy()
+
+        def on_file_clicked(widget):
+            dialog = Gtk.FileChooserDialog(
+                title="Please choose a file", parent=self, action=Gtk.FileChooserAction.OPEN
+            )
+            dialog.add_buttons(
+                Gtk.STOCK_CANCEL,
+                Gtk.ResponseType.CANCEL,
+                Gtk.STOCK_OPEN,
+                Gtk.ResponseType.OK,
+            )
+
+            filter_ini = Gtk.FileFilter()
+            filter_ini.set_name("ini file")
+            filter_ini.add_pattern("*.ini")
+            dialog.add_filter(filter_ini)
+
+            response = dialog.run()
+            if response == Gtk.ResponseType.OK:
+                print("Open clicked")
+                print("File selected: " + dialog.get_filename())
+                entry_info_config.set_text(dialog.get_filename())
+            elif response == Gtk.ResponseType.CANCEL:
+                print("Cancel clicked")
+
+            dialog.destroy()
+
+        def on_button_revert_camera(self, button, live_camera_180):
+            if button.get_active():
+                state = "on"
+                print("Camera upside down")
+            else:
+                print("Camera normal mode")
+                state = "off"
+
+        #
+        # read from config file
+        config = read_config()
+
+        box_info_config = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        entry_info_config = Gtk.Entry()
+        label_info_config = Gtk.Label("Path to config file")
+        if config.has_option('all', 'configfile'):
+            entry_info_config.set_text(config.get('all', 'configfile'))
+        else:
+            entry_info_config.set_text("config.ini")
+        file_info_config = Gtk.Button(label="Choose File")
+        file_info_config.connect("clicked", on_file_clicked)
+
+        box_working_dir = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        entry_working_dir = Gtk.Entry()
+        label_working_dir = Gtk.Label("Working Directory")
+        if config.has_option('all', 'working_dir'):
+            entry_working_dir.set_text(config.get('all', 'working_dir'))
+        else:
+            entry_working_dir.set_text("/tmp/")
+
+        box_ok_cancel= Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        button_ok = Gtk.Button.new_with_mnemonic("_Ok")
+        button_ok.connect("clicked", on_clicked_ok)
+        button_cancel = Gtk.Button.new_with_mnemonic("_Cancel")
+        button_cancel.connect("clicked", on_clicked_cancel)
+
+        box_live_camera_180= Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        self.label_camera_180 = Gtk.Label()
+        self.label_camera_180.set_text("180 Camera Rotation")
+        self.live_camera_180 = Gtk.CheckButton()
+        if config.get('all', 'live_camera_180') == "true":
+            self.live_camera_180.set_active("True")
+        else:
+            self.live_camera_180.set_active("True")
+        self.live_camera_180.connect("toggled", on_button_revert_camera, "1")
+
+        box_info_config.pack_start(label_info_config, False, False, 0)
+        box_info_config.pack_start(entry_info_config, False, False, 0)
+        box_info_config.pack_end(file_info_config, False, False, 0)
+        box_working_dir.pack_start(label_working_dir, False, False, 0)
+        box_working_dir.pack_end(entry_working_dir, False, False, 0)
+        box_live_camera_180.pack_start(self.label_camera_180, False, False, 0)
+        box_live_camera_180.pack_end(self.live_camera_180, False, False, 0)
+
+        box_ok_cancel.pack_start(button_cancel, False, False, 0)
+        box_ok_cancel.pack_end(button_ok, False, False, 0)
+
+        vboxconf = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        vboxconf.pack_start(box_info_config, False, False, 0)
+        vboxconf.pack_start(box_working_dir, False, False, 0)
+        vboxconf.pack_start(box_live_camera_180, False, False, 0)
+        frameconf = Gtk.Frame()
+        frameconf.add(vboxconf)
+        frameconf.show()
+
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        vbox.set_spacing(20)
+        self.add(vbox)
+
+        vbox.add(frameconf)
+        vbox.pack_end(box_ok_cancel, False, False, 0)
+        self.show_all()
+
+
+class DisplayImageConf(Gtk.Window):
     def __init__(self, parent):
         Gtk.Window.__init__(self, title="Rpi Camera Settings", transient_for=parent)
 
@@ -253,10 +378,7 @@ class DisplayConf(Gtk.Window):
  
         def on_clicked_ok(button_ok):
             print("saving file")
-            fp = open(entry_info_config.get_text(), 'w')
-
-            config.set('all', 'configfile', entry_info_config.get_text())
-            config.set('all', 'working_dir', entry_working_dir.get_text())
+            fp = open(config.get('all', 'configfile'), 'w')
             config.set('img', 'rotation', entry_rot.get_text())
             config.set('img', 'image_name', entry_image_name.get_text())
             config.set('img', 'width', entry_width.get_text())
@@ -278,64 +400,12 @@ class DisplayConf(Gtk.Window):
             print("cancel")
             self.destroy()
 
-        def on_file_clicked(widget):
-            dialog = Gtk.FileChooserDialog(
-                title="Please choose a file", parent=self, action=Gtk.FileChooserAction.OPEN
-            )
-            dialog.add_buttons(
-                Gtk.STOCK_CANCEL,
-                Gtk.ResponseType.CANCEL,
-                Gtk.STOCK_OPEN,
-                Gtk.ResponseType.OK,
-            )
-
-            filter_ini = Gtk.FileFilter()
-            filter_ini.set_name("ini file")
-            filter_ini.add_pattern("*.ini")
-            dialog.add_filter(filter_ini)
-
-            response = dialog.run()
-            if response == Gtk.ResponseType.OK:
-                print("Open clicked")
-                print("File selected: " + dialog.get_filename())
-                entry_info_config.set_text(dialog.get_filename())
-            elif response == Gtk.ResponseType.CANCEL:
-                print("Cancel clicked")
-
-            dialog.destroy()
-
-        def test_setting(self, button):
-            # be sure working dir exist
-            if not os.path.exists(self.working_dir):
-                os.makedirs(self.working_dir)
-            print('Start Capturing a test')
-            command = "raspistill" + " -rot " + rot + " -o " + self.image_name + str(chr(37)) +"04d." + self.encoding + " --width " + width + " --height " + height + " --quality " + quality +  " --encoding " + self.encoding + " " + extra
-                    #+ "2> /tmp/_datafile"
-            print(command)
-            self.sptest = subprocess.Popen(command, cwd=self.working_dir, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            rctest = sptest.wait()
-            try:
-                outs, errs = sptest.communicate(timeout=2)
-            except TimeoutExpired:
-                sptest.kill()
-                outs, errs = sptest.communicate()
-
         #
         # read from config file
         config = read_config()
 
         self.help_button = Gtk.Button(label="raspistill Help")
         self.help_button.connect("clicked", show_help)
-
-        box_info_config = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        entry_info_config = Gtk.Entry()
-        label_info_config = Gtk.Label("Path to config file")
-        if config.has_option('all', 'configfile'):
-            entry_info_config.set_text(config.get('all', 'configfile'))
-        else:
-            entry_info_config.set_text("config.ini")
-        file_info_config = Gtk.Button(label="Choose File")
-        file_info_config.connect("clicked", on_file_clicked)
 
         # rotate or not
         box_rot = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
@@ -401,14 +471,6 @@ class DisplayConf(Gtk.Window):
         else:
             entry_image_name.set_text('image_')
 
-        box_working_dir = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        entry_working_dir = Gtk.Entry()
-        label_working_dir = Gtk.Label("Working Directory")
-        if config.has_option('all', 'working_dir'):
-            entry_working_dir.set_text(config.get('all', 'working_dir'))
-        else:
-            entry_working_dir.set_text("/tmp/")
-
         box_extra = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         entry_extra = Gtk.Entry()
         label_extra = Gtk.Label("Extra Options (See Help)")
@@ -417,18 +479,12 @@ class DisplayConf(Gtk.Window):
         else:
             entry_extra.set_text("")
 
-
         box_ok_cancel= Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         button_ok = Gtk.Button.new_with_mnemonic("_Ok")
         button_ok.connect("clicked", on_clicked_ok)
         button_cancel = Gtk.Button.new_with_mnemonic("_Cancel")
         button_cancel.connect("clicked", on_clicked_cancel)
 
-        box_info_config.pack_start(label_info_config, False, False, 0)
-        box_info_config.pack_start(entry_info_config, False, False, 0)
-        box_info_config.pack_end(file_info_config, False, False, 0)
-        box_working_dir.pack_start(label_working_dir, False, False, 0)
-        box_working_dir.pack_end(entry_working_dir, False, False, 0)
         box_rot.pack_start(label_rot, False, False, 0)
         box_rot.pack_end(entry_rot, False, False, 0)
         box_height.pack_start(label_height, False, False, 0)
@@ -451,13 +507,6 @@ class DisplayConf(Gtk.Window):
         self.add(vbox)
         vbox.pack_start(self.help_button, False, False, 0)
 
-        vboxconf = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-        vboxconf.pack_start(box_info_config, False, False, 0)
-        vboxconf.pack_start(box_working_dir, False, False, 0)
-        frameconf = Gtk.Frame()
-        frameconf.add(vboxconf)
-        frameconf.show()
-
         vboximg = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         vboximg.pack_start(box_image_name, False, False, 0)
         vboximg.pack_start(box_rot, False, False, 0)
@@ -475,8 +524,6 @@ class DisplayConf(Gtk.Window):
         framemore = Gtk.Frame()
         framemore.add(vboxmore)
         framemore.show()
-
-        vbox.add(frameconf)
         vbox.add(frameimage)
         vbox.add(framemore)
         vbox.pack_end(box_ok_cancel, False, False, 0)
@@ -559,6 +606,9 @@ class MainBox(Gtk.Window):
         #info
         info = Gtk.Label()
         info.set_text("\nCreate a Timelapse based on RPI camera captures\n")
+        self.all_settings_button = Gtk.Button(label="All Settings")
+        self.all_settings_button.set_tooltip_text("Configure general options")
+        self.all_settings_button.connect("clicked", self.on_set_all_conf)
 
         # current status
         self.status = Gtk.Label()
@@ -581,7 +631,7 @@ class MainBox(Gtk.Window):
         #https://developer.gnome.org/gnome-devel-demos/stable/tooltip.py.html.en
         # with a tooltip with a given text in the Pango markup language
         #BLAL.set_tooltip_markup("Open an <i>existing</i> file")        
-        self.settings_button.connect("clicked", self.on_set_conf)
+        self.settings_button.connect("clicked", self.on_set_image_conf)
         self.settings_button.set_sensitive(True)
 
         vbox = Gtk.Box()
@@ -593,6 +643,7 @@ class MainBox(Gtk.Window):
         hboxinfo.set_orientation(Gtk.Orientation.HORIZONTAL)
         hboxinfo.set_spacing(10)
         hboxinfo.pack_start(info, True, True, 10)
+        hboxinfo.pack_start(self.all_settings_button, True, True, 10)
         frameinfo = Gtk.Frame()
         frameinfo.add(hboxinfo)
         frameinfo.show()
@@ -647,7 +698,7 @@ class MainBox(Gtk.Window):
         self.hboxrender.pack_start(self.stop_render_button, False, False, 0)
         self.hboxrender.pack_start(self.choose_image_button, False, False, 0)
         self.hboxrender.pack_end(self.render_spinner, True, False, 0)
-        self.render_button.set_sensitive(False)
+        self.render_button.set_sensitive(True)
         self.render_button.set_tooltip_text("Create the video based on the capture")
         framerender = Gtk.Frame()
         framerender.set_label("Video Timelapse Command")
@@ -673,6 +724,7 @@ class MainBox(Gtk.Window):
             )
             dialog.run()
             dialog.destroy()
+
 
     def launch_gthumb(self, button):
         print("Launch Gthumb")
@@ -700,7 +752,11 @@ class MainBox(Gtk.Window):
         self.live_on_button.set_sensitive(False)
         self.live_off_button.set_sensitive(True)
         self.c_button.set_sensitive(False)
-        self.pipeline = Gst.parse_launch("v4l2src device=" + video_dev + " ! tee name=tee ! queue name=videoqueue ! deinterlace ! videoflip method=2 ! xvimagesink ")
+        config = read_config()
+        if config.get('all', 'live_camera_180') == "true":
+            self.pipeline = Gst.parse_launch("v4l2src device=" + video_dev + " ! tee name=tee ! queue name=videoqueue ! deinterlace ! videoflip method=2 ! xvimagesink ")
+        else:
+            self.pipeline = Gst.parse_launch("v4l2src device=" + video_dev + " ! tee name=tee ! queue name=videoqueue ! deinterlace ! xvimagesink ")
 
         # Create bus to get events from GStreamer pipeline
         bus = self.pipeline.get_bus()
@@ -816,13 +872,27 @@ class MainBox(Gtk.Window):
         #cmd = "ffmpeg -y -r " + framerate + " -filter:v \"setpts=" + setpts + "\" " + " -pattern_type glob -i \"" + self.working_dir + "/" + self.image_name + "*." + encoding + "\" " + " -s " + vwidth + "x" + vheight + " -vcodec " + vcodec + " " + self.working_dir + "/output.mp4"
         cmd = "ffmpeg -y -r " + framerate + " -pattern_type glob -i \"" + self.working_dir + "/" + self.image_name + "*." + encoding + "\" " + " -s " + vwidth + "x" + vheight + " -vcodec " + vcodec + " " + self.working_dir + "/output.mp4"
         if os.path.isfile("/usr/bin/ffmpeg"):
-            print(cmd)
-            self.spvideo = subprocess.Popen(cmd, cwd=self.working_dir, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            self.render_button.set_sensitive(False)
-            self.stop_render_button.set_sensitive(True)
-            self.c_button.set_sensitive(False)
-            self.render_spinner.start()
-            self.source_id = GLib.timeout_add(2000, self.Update_rendering)
+            num_files = len([f for f in os.listdir(self.working_dir)if os.path.isfile(os.path.join(self.working_dir, f))])
+            dialogr = Gtk.MessageDialog(
+                transient_for=self,
+                flags=0,
+                message_type=Gtk.MessageType.WARNING,
+                buttons=Gtk.ButtonsType.YES_NO,
+                text="Are you Sure you want to render the video?\n  (" + str(num_files) + " images found)",
+            )
+            response = dialogr.run()
+            if response == Gtk.ResponseType.YES:
+                # enable rendering
+                print(cmd)
+                self.spvideo = subprocess.Popen(cmd, cwd=self.working_dir, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                self.render_button.set_sensitive(False)
+                self.stop_render_button.set_sensitive(True)
+                self.c_button.set_sensitive(False)
+                self.render_spinner.start()
+                self.source_id = GLib.timeout_add(2000, self.Update_rendering)
+            elif response == Gtk.ResponseType.NO:
+                print("Cancel")
+            dialogr.destroy()
 
         else:
             dialog = Gtk.MessageDialog(
@@ -949,7 +1019,7 @@ class MainBox(Gtk.Window):
                 flags=0,
                 message_type=Gtk.MessageType.WARNING,
                 buttons=Gtk.ButtonsType.YES_NO,
-                text="All previous images will be deleted from this directory. Are you Sure you want to do this ?\n\n" + self.working_dir,
+                text="All previous images will be deleted from this directory. Are you Sure you want to do this ?\n\n (Current working_dir is: " + self.working_dir + ")" + "\n\n If not please change the working_dir setting to another directory",
             )
             response = dialog.run()
             if response == Gtk.ResponseType.YES:
@@ -1027,6 +1097,7 @@ class MainBox(Gtk.Window):
                 self.c_button.set_sensitive(True)
                 self.settings_button.set_sensitive(True)
                 self.s_button.set_sensitive(False)
+                self.t_button.set_sensitive(True)
                 self.live_on_button.set_sensitive(True)
                 # enable rendering
                 self.render_button.set_sensitive(True)
@@ -1036,8 +1107,11 @@ class MainBox(Gtk.Window):
     
             dialog.destroy()
 
-    def on_set_conf(self, widget):
-        dialog = DisplayConf(self)
+    def on_set_image_conf(self, widget):
+        dialog = DisplayImageConf(self)
+
+    def on_set_all_conf(self, widget):
+        dialog = DisplayAllConf(self)
 
     def on_video_conf(self, widget):
         print("plop")

@@ -56,7 +56,7 @@ ffmpeg -i YOURVIDEO.mp4 -setpts 0.5*PTS output.mp4
 
 * When you click **Live On** the live streaming could not be displayed, if so just resize a bit the Main window and you will see it. I don't know yet how to fix this issue...
 * killing grabing the subprocess pid cause some errors, so using a killall instead... not really clean
-* setting didn't retrience image encoding type
+* setting didn't retrieve image encoding type
 * RPI camera can cause some calltrace : [81515.260266] Hardware name: BCM2711 [81515.260418] PC is at port_disable+0xa0/0x118 [bcm2835_mmal_vchiq]
 
 
@@ -66,11 +66,9 @@ There is probably plenty of other features that this tool can have :)
 
 * redo a video encoding with **stepts** option
 * propose value for ffmpeg rendering based on the number of images
-* show how many images has been taken
-* being able to increase/decrease the Live frame
+* being able to increase/decrease the Live frame size
 * being able to change the name of the video
 * add more options in the video rendering setting
-* being able to rotate the RPI camera for the Live preview
 * split the code in multiple files
 
 # Images
