@@ -15,6 +15,7 @@ import io
 import time
 import threading
 import os.path
+import glob
 from datetime import datetime
 
 gi.require_version('Gst', '1.0')
@@ -872,13 +873,15 @@ class MainBox(Gtk.Window):
         #cmd = "ffmpeg -y -r " + framerate + " -filter:v \"setpts=" + setpts + "\" " + " -pattern_type glob -i \"" + self.working_dir + "/" + self.image_name + "*." + encoding + "\" " + " -s " + vwidth + "x" + vheight + " -vcodec " + vcodec + " " + self.working_dir + "/output.mp4"
         cmd = "ffmpeg -y -r " + framerate + " -pattern_type glob -i \"" + self.working_dir + "/" + self.image_name + "*." + encoding + "\" " + " -s " + vwidth + "x" + vheight + " -vcodec " + vcodec + " " + self.working_dir + "/output.mp4"
         if os.path.isfile("/usr/bin/ffmpeg"):
-            num_files = len([f for f in os.listdir(self.working_dir)if os.path.isfile(os.path.join(self.working_dir, f))])
+            #num_files = len([f for f in os.listdir(self.working_dir)if os.path.isfile(os.path.join(self.working_dir, f))])
+            os.chdir(self.working_dir)
+            num_files = len(glob.glob("*." + encoding))
             dialogr = Gtk.MessageDialog(
                 transient_for=self,
                 flags=0,
                 message_type=Gtk.MessageType.WARNING,
                 buttons=Gtk.ButtonsType.YES_NO,
-                text="Are you Sure you want to render the video?\n  (" + str(num_files) + " images found)",
+                text="Are you Sure you want to render the video?\n  (" + str(num_files) + " images found)\n\n" + cmd,
             )
             response = dialogr.run()
             if response == Gtk.ResponseType.YES:
@@ -889,7 +892,7 @@ class MainBox(Gtk.Window):
                 self.stop_render_button.set_sensitive(True)
                 self.c_button.set_sensitive(False)
                 self.render_spinner.start()
-                self.source_id = GLib.timeout_add(2000, self.Update_rendering)
+                self.source_id = GLib.timeout_add(3000, self.Update_rendering)
             elif response == Gtk.ResponseType.NO:
                 print("Cancel")
             dialogr.destroy()
@@ -1042,11 +1045,11 @@ class MainBox(Gtk.Window):
                 self.s_button.set_sensitive(True)
                 self.nb_capture.set_visible(True)
                 print('Start Capturing')
-                self.status.set_text("Capture ON")
-                command = "raspistill" + " -rot " + rot + " --timelapse " + self.timelapse + " -o " + self.image_name + str(chr(37)) +"04d." + self.encoding + " --width " + width + " --height " + height + " --quality " + quality +  " -t 0" + " --encoding " + self.encoding + " -a " + datetime.now().strftime("\"%d/%m/%Y %H:%M:%S\"") + " " + extra 
-                #+ "2> /tmp/_datafile"
+                #command = "raspistill" + " -rot " + rot + " --timelapse " + self.timelapse + " -o " + self.image_name + str(chr(37)) +"04d." + self.encoding + " --width " + width + " --height " + height + " --quality " + quality +  " -t 0" + " --encoding " + self.encoding + " -a " + datetime.now().strftime("\"%d/%m/%Y %H:%M:%S\"") + " " + extra 
+                command = "raspistill" + " -rot " + rot + " --timelapse " + self.timelapse + " -o " + self.image_name + str(chr(37)) +"04d." + self.encoding + " --width " + width + " --height " + height + " --quality " + quality +  " -t 0" + " --encoding " + self.encoding + " -a " + datetime.now().strftime("\"%d/%m/%Y\"") + " " + extra 
+                self.status.set_text("Capture ON\n")
+                #self.status.set_text("Capture ON\n" + command)
                 print(command)
-    
                 self.sp = subprocess.Popen(command, cwd=self.working_dir, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 self.ratio = float(int(width)/int(height))
                 # wait for first image
